@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 
 const authRoutes = require('./src/routes/authRoutes');
 const rideRoutes = require('./src/routes/rideRoutes');
+const userRoutes = require('./src/routes/userRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const initSockets = require('./src/sockets');
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 
 

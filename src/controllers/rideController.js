@@ -1,7 +1,5 @@
 const Ride = require('../models/Ride');
-const User = require('../models/User');
 
-// Rider requests a ride
 exports.requestRide = async (req, res) => {
   try {
     const { pickup, dropoff, fareEstimate } = req.body;
@@ -9,10 +7,9 @@ exports.requestRide = async (req, res) => {
       rider: req.user.id,
       pickup,
       dropoff,
-      fareEstimate
+      fareEstimate,
     });
 
-    // notify all available drivers via socket
     const io = req.app.get('io');
     io.emit('ride:new', ride);
 
@@ -22,7 +19,6 @@ exports.requestRide = async (req, res) => {
   }
 };
 
-// Driver accepts a ride
 exports.acceptRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id);
@@ -35,7 +31,7 @@ exports.acceptRide = async (req, res) => {
 
     const io = req.app.get('io');
     io.emit(`ride:update:${ride._id}`, ride);
-    io.emit('ride:taken', ride._id); // tell other drivers it's gone
+    io.emit('ride:taken', ride._id);
 
     res.json(ride);
   } catch (err) {
@@ -43,7 +39,6 @@ exports.acceptRide = async (req, res) => {
   }
 };
 
-// Update ride status (in_progress, completed, cancelled)
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -67,7 +62,30 @@ exports.getMyRides = async (req, res) => {
     const filter = req.user.role === 'rider'
       ? { rider: req.user.id }
       : { driver: req.user.id };
-    const rides = await Ride.find(filter).sort({ createdAt: -1 });
+
+    const rides = await Ride.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('rider', 'firstName lastName profilePicture')
+      .populate('driver', 'firstName lastName profilePicture vehicleType vehiclePlate vehicleColor');
+
+    res.json(rides);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getAvailableRides = async (req, res) => {
+  try {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ message: 'Only drivers can view available rides' });
+    }
+
+    const rides = await Ride.find({ status: 'requested' })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('rider', 'firstName lastName profilePicture');
+
     res.json(rides);
   } catch (err) {
     res.status(500).json({ message: err.message });
