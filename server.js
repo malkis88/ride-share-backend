@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 
 const authRoutes = require('./src/routes/authRoutes');
 const rideRoutes = require('./src/routes/rideRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes');
 const initSockets = require('./src/sockets');
 
 const app = express();
@@ -15,6 +16,8 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
+app.use('/api/upload', uploadRoutes);
+
 
 app.get('/', (req, res) => res.send('Ride share API running'));
 
