@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, unique: true, sparse: true, trim: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['rider', 'driver'], default: 'rider' },
+  profilePicture: { type: String, default: null },
   vehicleModel: { type: String },
   vehiclePlate: { type: String },
   currentLocation: {
@@ -15,7 +16,6 @@ const userSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// require at least one of phone or email
 userSchema.pre('validate', function (next) {
   if (!this.phone && !this.email) {
     return next(new Error('Either phone or email is required'));
