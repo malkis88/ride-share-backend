@@ -3,11 +3,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const isEmail = (value) => /\S+@\S+\.\S+/.test(value);
-const { name, identifier, password, role, profilePicture } = req.body;
 
 exports.register = async (req, res) => {
   try {
-    const { name, identifier, password, role } = req.body;
+    const { name, identifier, password, role, profilePicture } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({ message: 'Identifier and password are required' });
@@ -26,21 +25,28 @@ exports.register = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-   const userData = {
-  name,
-  password: hashed,
-  role: role || 'rider',
-  profilePicture: profilePicture || null,
-  ...(usingEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed }),
-};
+    const userData = {
+      name,
+      password: hashed,
+      role: role || 'rider',
+      profilePicture: profilePicture || null,
+      ...(usingEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed }),
+    };
 
     const user = await User.create(userData);
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.status(201).json({
-  token,
-  user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, profilePicture: user.profilePicture },
-});
+    res.status(201).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profilePicture: user.profilePicture,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -68,10 +74,17 @@ exports.login = async (req, res) => {
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-res.status(201).json({
-  token,
-  user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, profilePicture: user.profilePicture },
-});
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profilePicture: user.profilePicture,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
