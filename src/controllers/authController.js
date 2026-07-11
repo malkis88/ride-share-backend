@@ -19,6 +19,9 @@ const buildUserResponse = (user) => ({
   vehicleType: user.vehicleType,
   vehiclePlate: user.vehiclePlate,
   vehicleColor: user.vehicleColor,
+  documents: user.documents,
+  verificationStatus: user.verificationStatus,
+  verificationNote: user.verificationNote,
 });
 
 exports.register = async (req, res) => {
@@ -37,6 +40,7 @@ exports.register = async (req, res) => {
       vehiclePlate,
       vehicleColor,
       agreedToTerms,
+      documents,
     } = req.body;
 
     if (!firstName || !lastName) {
@@ -48,14 +52,21 @@ exports.register = async (req, res) => {
 
     const trimmed = identifier.trim();
     const usingEmail = isEmail(trimmed);
-
-    const query = usingEmail
-      ? { email: trimmed.toLowerCase() }
-      : { phone: trimmed };
+    const query = usingEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed };
 
     const existing = await User.findOne(query);
     if (existing) {
       return res.status(400).json({ message: 'An account with this identifier already exists' });
+    }
+
+    const finalRole = role || 'rider';
+
+    if (finalRole === 'driver') {
+      const requiredDocs = ['driversLicense', 'vehicleRegistration', 'insuranceCertificate', 'selfie'];
+      const missing = requiredDocs.filter((key) => !documents || !documents[key]);
+      if (missing.length > 0) {
+        return res.status(400).json({ message: `Missing required documents: ${missing.join(', ')}` });
+      }
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -64,13 +75,14 @@ exports.register = async (req, res) => {
       firstName,
       lastName,
       password: hashed,
-      role: role || 'rider',
+      role: finalRole,
       profilePicture: profilePicture || null,
       agreedToTerms: !!agreedToTerms,
+      verificationStatus: finalRole === 'driver' ? 'pending' : 'not_applicable',
       ...(usingEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed }),
     };
 
-    if ((role || 'rider') === 'driver') {
+    if (finalRole === 'driver') {
       Object.assign(userData, {
         licenseNumber: licenseNumber || null,
         licenseExpiry: licenseExpiry || null,
@@ -78,6 +90,13 @@ exports.register = async (req, res) => {
         vehicleType: vehicleType || null,
         vehiclePlate: vehiclePlate || null,
         vehicleColor: vehicleColor || null,
+        documents: {
+          driversLicense: documents?.driversLicense || null,
+          vehicleRegistration: documents?.vehicleRegistration || null,
+          insuranceCertificate: documents?.insuranceCertificate || null,
+          vehicleInspection: documents?.vehicleInspection || null,
+          selfie: documents?.selfie || null,
+        },
       });
     }
 
@@ -100,10 +119,7 @@ exports.login = async (req, res) => {
 
     const trimmed = identifier.trim();
     const usingEmail = isEmail(trimmed);
-
-    const query = usingEmail
-      ? { email: trimmed.toLowerCase() }
-      : { phone: trimmed };
+    const query = usingEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed };
 
     const user = await User.findOne(query);
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });

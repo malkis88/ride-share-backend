@@ -18,6 +18,21 @@ const userSchema = new mongoose.Schema({
   vehicleColor: { type: String, default: null },
   agreedToTerms: { type: Boolean, default: false },
 
+  documents: {
+    driversLicense: { type: String, default: null },
+    vehicleRegistration: { type: String, default: null },
+    insuranceCertificate: { type: String, default: null },
+    vehicleInspection: { type: String, default: null },
+    selfie: { type: String, default: null },
+  },
+
+  verificationStatus: {
+    type: String,
+    enum: ['not_applicable', 'pending', 'approved', 'rejected'],
+    default: 'not_applicable',
+  },
+  verificationNote: { type: String, default: null },
+
   currentLocation: {
     lat: { type: Number, default: null },
     lng: { type: Number, default: null }
