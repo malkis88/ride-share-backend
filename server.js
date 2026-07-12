@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const authRoutes = require('./src/routes/authRoutes');
+const oauthRoutes = require('./src/routes/oauthRoutes');
 const rideRoutes = require('./src/routes/rideRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', oauthRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);

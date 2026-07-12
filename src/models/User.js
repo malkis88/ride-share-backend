@@ -5,11 +5,12 @@ const userSchema = new mongoose.Schema({
   lastName: { type: String, required: true },
   email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   phone: { type: String, unique: true, sparse: true, trim: true },
-  password: { type: String, required: true },
+  password: { type: String, default: null },
+  googleId: { type: String, unique: true, sparse: true },
+  appleId: { type: String, unique: true, sparse: true },
   role: { type: String, enum: ['rider', 'driver'], default: 'rider' },
   profilePicture: { type: String, default: null },
 
-  // driver-only fields
   licenseNumber: { type: String, default: null },
   licenseExpiry: { type: String, default: null },
   yearsOfExperience: { type: String, default: null },
