@@ -20,13 +20,14 @@ const userSchema = new mongoose.Schema({
   agreedToTerms: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
 
-  documents: {
-    driversLicense: { type: String, default: null },
-    vehicleRegistration: { type: String, default: null },
-    insuranceCertificate: { type: String, default: null },
-    vehicleInspection: { type: String, default: null },
-    selfie: { type: String, default: null },
-  },
+documents: {
+  driversLicense: { type: String, default: null },
+  nationalId: { type: String, default: null },
+  vehicleRegistration: { type: String, default: null },
+  insuranceCertificate: { type: String, default: null },
+  vehicleInspection: { type: String, default: null },
+  selfie: { type: String, default: null },
+},
 
   verificationStatus: {
     type: String,

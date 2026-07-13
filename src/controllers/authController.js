@@ -63,7 +63,7 @@ exports.register = async (req, res) => {
     const finalRole = role || 'rider';
 
     if (finalRole === 'driver') {
-      const requiredDocs = ['driversLicense', 'vehicleRegistration', 'insuranceCertificate', 'selfie'];
+      const requiredDocs = ['driversLicense', 'nationalId', 'vehicleRegistration', 'insuranceCertificate', 'selfie'];
       const missing = requiredDocs.filter((key) => !documents || !documents[key]);
       if (missing.length > 0) {
         return res.status(400).json({ message: `Missing required documents: ${missing.join(', ')}` });
@@ -91,13 +91,14 @@ exports.register = async (req, res) => {
         vehicleType: vehicleType || null,
         vehiclePlate: vehiclePlate || null,
         vehicleColor: vehicleColor || null,
-        documents: {
-          driversLicense: documents?.driversLicense || null,
-          vehicleRegistration: documents?.vehicleRegistration || null,
-          insuranceCertificate: documents?.insuranceCertificate || null,
-          vehicleInspection: documents?.vehicleInspection || null,
-          selfie: documents?.selfie || null,
-        },
+       documents: {
+  driversLicense: documents?.driversLicense || null,
+  nationalId: documents?.nationalId || null,
+  vehicleRegistration: documents?.vehicleRegistration || null,
+  insuranceCertificate: documents?.insuranceCertificate || null,
+  vehicleInspection: documents?.vehicleInspection || null,
+  selfie: documents?.selfie || null,
+},
       });
     }
 
