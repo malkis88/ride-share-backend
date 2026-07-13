@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
   vehiclePlate: { type: String, default: null },
   vehicleColor: { type: String, default: null },
   agreedToTerms: { type: Boolean, default: false },
+  isAdmin: { type: Boolean, default: false },
 
   documents: {
     driversLicense: { type: String, default: null },
