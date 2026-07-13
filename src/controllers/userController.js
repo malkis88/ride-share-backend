@@ -13,6 +13,7 @@ exports.getMe = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      isAdmin: user.isAdmin,
       profilePicture: user.profilePicture,
       isAvailable: user.isAvailable,
       verificationStatus: user.verificationStatus,

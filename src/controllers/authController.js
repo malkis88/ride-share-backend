@@ -12,6 +12,7 @@ const buildUserResponse = (user) => ({
   email: user.email,
   phone: user.phone,
   role: user.role,
+  isAdmin: user.isAdmin,
   profilePicture: user.profilePicture,
   licenseNumber: user.licenseNumber,
   licenseExpiry: user.licenseExpiry,
@@ -123,6 +124,10 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne(query);
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+    if (!user.password) {
+      return res.status(400).json({ message: 'This account uses social sign-in. Please continue with Google or Apple.' });
+    }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
