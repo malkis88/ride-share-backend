@@ -22,7 +22,8 @@ const userSchema = new mongoose.Schema({
 
 documents: {
   driversLicense: { type: String, default: null },
-  nationalId: { type: String, default: null },
+  nationalIdFront: { type: String, default: null },
+  nationalIdBack: { type: String, default: null },
   vehicleRegistration: { type: String, default: null },
   insuranceCertificate: { type: String, default: null },
   vehicleInspection: { type: String, default: null },
