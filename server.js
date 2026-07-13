@@ -10,6 +10,7 @@ const oauthRoutes = require('./src/routes/oauthRoutes');
 const rideRoutes = require('./src/routes/rideRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
+const tripRoutes = require('./src/routes/tripRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const initSockets = require('./src/sockets');
 
@@ -22,6 +23,7 @@ app.use('/api/auth', oauthRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/trips', tripRoutes);
 app.use('/api/upload', uploadRoutes);
 
 
