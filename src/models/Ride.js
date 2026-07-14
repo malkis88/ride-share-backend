@@ -13,12 +13,16 @@ const rideSchema = new mongoose.Schema({
     lat: Number,
     lng: Number
   },
+  distanceKm: { type: Number, default: null },
   status: {
     type: String,
     enum: ['requested', 'accepted', 'in_progress', 'completed', 'cancelled'],
     default: 'requested'
   },
-  fareEstimate: { type: Number, default: 0 }
+  cancelledBy: { type: String, enum: ['rider', 'driver', null], default: null },
+  fareEstimate: { type: Number, default: 0 },
+  driverRating: { type: Number, min: 1, max: 5, default: null },
+  riderRating: { type: Number, min: 1, max: 5, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Ride', rideSchema);
