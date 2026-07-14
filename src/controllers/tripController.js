@@ -1,5 +1,6 @@
 const Trip = require('../models/Trip');
 const User = require('../models/User');
+const { sendPushNotifications } = require('../services/pushService');
 
 exports.createTrip = async (req, res) => {
   try {
@@ -100,7 +101,7 @@ exports.bookTrip = async (req, res) => {
   try {
     const seatsRequested = Number(req.body.seats) || 1;
 
-    const trip = await Trip.findById(req.params.id);
+    const trip = await Trip.findById(req.params.id).populate('driver', 'pushToken firstName');
     if (!trip) return res.status(404).json({ message: 'Trip not found' });
     if (trip.status !== 'scheduled') {
       return res.status(400).json({ message: 'This trip is no longer available' });
@@ -112,6 +113,17 @@ exports.bookTrip = async (req, res) => {
     trip.passengers.push({ rider: req.user.id, seatsBooked: seatsRequested, status: 'confirmed' });
     trip.availableSeats -= seatsRequested;
     await trip.save();
+
+    const rider = await User.findById(req.user.id);
+
+    if (trip.driver?.pushToken) {
+      sendPushNotifications(
+        [trip.driver.pushToken],
+        'New booking!',
+        `${rider.firstName} booked ${seatsRequested} seat${seatsRequested > 1 ? 's' : ''} on your trip to ${trip.destination.address}.`,
+        { screen: 'home', type: 'trip_booked', tripId: trip._id.toString() }
+      );
+    }
 
     res.json(trip);
   } catch (err) {

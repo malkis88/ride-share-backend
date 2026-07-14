@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { sendPushNotifications } = require('../services/pushService');
 
 exports.getDriverApplications = async (req, res) => {
   try {
@@ -28,7 +29,7 @@ exports.getDriverById = async (req, res) => {
 
 exports.reviewDriver = async (req, res) => {
   try {
-    const { decision, note } = req.body; // decision: "approved" | "rejected"
+    const { decision, note } = req.body;
 
     if (!['approved', 'rejected'].includes(decision)) {
       return res.status(400).json({ message: 'Decision must be "approved" or "rejected"' });
@@ -40,6 +41,21 @@ exports.reviewDriver = async (req, res) => {
     driver.verificationStatus = decision;
     driver.verificationNote = note || null;
     await driver.save();
+
+    if (driver.pushToken) {
+      const title = decision === 'approved' ? "You're approved!" : 'Application update';
+      const body =
+        decision === 'approved'
+          ? 'Your driver account has been approved. You can now go online and start accepting rides.'
+          : note
+          ? `Your application was not approved: ${note}`
+          : 'Your driver application was not approved. Contact support for details.';
+
+      sendPushNotifications([driver.pushToken], title, body, {
+        screen: 'home',
+        type: 'verification_update',
+      });
+    }
 
     res.json({
       id: driver._id,

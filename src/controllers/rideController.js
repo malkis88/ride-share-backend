@@ -1,4 +1,6 @@
 const Ride = require('../models/Ride');
+const User = require('../models/User');
+const { sendPushNotifications } = require('../services/pushService');
 
 exports.requestRide = async (req, res) => {
   try {
@@ -13,6 +15,22 @@ exports.requestRide = async (req, res) => {
     const io = req.app.get('io');
     io.emit('ride:new', ride);
 
+    const availableDrivers = await User.find({
+      role: 'driver',
+      isAvailable: true,
+      verificationStatus: 'approved',
+      pushToken: { $ne: null },
+    }).select('pushToken');
+
+    if (availableDrivers.length > 0) {
+      sendPushNotifications(
+        availableDrivers.map((d) => d.pushToken),
+        'New ride request',
+        `Pickup at ${pickup?.address || 'a nearby location'}.`,
+        { screen: 'home', type: 'ride_requested', rideId: ride._id.toString() }
+      );
+    }
+
     res.status(201).json(ride);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -21,7 +39,7 @@ exports.requestRide = async (req, res) => {
 
 exports.acceptRide = async (req, res) => {
   try {
-    const ride = await Ride.findById(req.params.id);
+    const ride = await Ride.findById(req.params.id).populate('rider', 'pushToken');
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
     if (ride.status !== 'requested') return res.status(400).json({ message: 'Ride already taken' });
 
@@ -29,9 +47,20 @@ exports.acceptRide = async (req, res) => {
     ride.status = 'accepted';
     await ride.save();
 
+    const driver = await User.findById(req.user.id);
+
     const io = req.app.get('io');
     io.emit(`ride:update:${ride._id}`, ride);
     io.emit('ride:taken', ride._id);
+
+    if (ride.rider?.pushToken) {
+      sendPushNotifications(
+        [ride.rider.pushToken],
+        'Driver on the way!',
+        `${driver.firstName} accepted your ride and is heading to pick you up.`,
+        { screen: 'home', type: 'ride_accepted', rideId: ride._id.toString() }
+      );
+    }
 
     res.json(ride);
   } catch (err) {

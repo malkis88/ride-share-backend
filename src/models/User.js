@@ -41,7 +41,8 @@ documents: {
     lat: { type: Number, default: null },
     lng: { type: Number, default: null }
   },
-  isAvailable: { type: Boolean, default: false }
+  isAvailable: { type: Boolean, default: false },
+pushToken: { type: String, default: null },
 }, { timestamps: true });
 
 userSchema.pre('validate', function (next) {

@@ -50,3 +50,15 @@ exports.updateAvailability = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+    if (!pushToken) return res.status(400).json({ message: 'pushToken is required' });
+
+    await User.findByIdAndUpdate(req.user.id, { pushToken });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
