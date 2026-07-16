@@ -1,6 +1,6 @@
 const Trip = require('../models/Trip');
 const User = require('../models/User');
-const { sendPushNotifications } = require('../services/pushService');
+const { getRouteDistance } = require('../services/mapsService');
 
 exports.createTrip = async (req, res) => {
   try {
@@ -12,10 +12,13 @@ exports.createTrip = async (req, res) => {
       return res.status(403).json({ message: 'Your driver account must be approved before creating trips' });
     }
 
-    const { origin, destination, departureTime, pricePerKm, distanceKm, availableSeats, notes } = req.body;
+    const { origin, destination, departureTime, pricePerKm, availableSeats, notes } = req.body;
 
-    if (!origin?.address || !destination?.address) {
-      return res.status(400).json({ message: 'Origin and destination addresses are required' });
+    if (!origin?.address || origin?.lat == null || origin?.lng == null) {
+      return res.status(400).json({ message: 'Origin location with coordinates is required' });
+    }
+    if (!destination?.address || destination?.lat == null || destination?.lng == null) {
+      return res.status(400).json({ message: 'Destination location with coordinates is required' });
     }
     if (!departureTime) {
       return res.status(400).json({ message: 'Departure time is required' });
@@ -23,14 +26,19 @@ exports.createTrip = async (req, res) => {
     if (!pricePerKm || pricePerKm <= 0) {
       return res.status(400).json({ message: 'Price per km must be greater than 0' });
     }
-    if (!distanceKm || distanceKm <= 0) {
-      return res.status(400).json({ message: 'Distance must be greater than 0' });
-    }
     if (!availableSeats || availableSeats < 1) {
       return res.status(400).json({ message: 'Available seats must be at least 1' });
     }
 
-    const totalPricePerSeat = Math.round(pricePerKm * distanceKm * 100) / 100;
+    let routeInfo;
+    try {
+      routeInfo = await getRouteDistance(origin.lat, origin.lng, destination.lat, destination.lng);
+    } catch (err) {
+      console.error('Directions API error (trip):', err.message);
+      return res.status(400).json({ message: 'Could not calculate route distance. Please check the locations.' });
+    }
+
+    const totalPricePerSeat = Math.round(pricePerKm * routeInfo.distanceKm * 100) / 100;
 
     const trip = await Trip.create({
       driver: driver._id,
@@ -38,7 +46,7 @@ exports.createTrip = async (req, res) => {
       destination,
       departureTime: new Date(departureTime),
       pricePerKm,
-      distanceKm,
+      distanceKm: routeInfo.distanceKm,
       totalPricePerSeat,
       totalSeats: availableSeats,
       availableSeats,
@@ -99,6 +107,7 @@ exports.cancelTrip = async (req, res) => {
 
 exports.bookTrip = async (req, res) => {
   try {
+    const { sendPushNotifications } = require('../services/pushService');
     const seatsRequested = Number(req.body.seats) || 1;
 
     const trip = await Trip.findById(req.params.id).populate('driver', 'pushToken firstName');
