@@ -15,8 +15,18 @@ exports.requestRide = async (req, res) => {
       fareEstimate,
     });
 
-    const io = req.app.get('io');
-    io.emit('ride:new', ride);
+  const io = req.app.get("io");
+
+// Send the ride only to connected drivers
+io.to("drivers").emit("ride:new", {
+  _id: ride._id,
+  rider: ride.rider,
+  pickup: ride.pickup,
+  dropoff: ride.dropoff,
+  fareEstimate: ride.fareEstimate,
+  status: ride.status,
+  createdAt: ride.createdAt,
+});
 
     const availableDrivers = await User.find({
       role: 'driver',
@@ -64,9 +74,15 @@ exports.acceptRide = async (req, res) => {
 
     const driver = await User.findById(req.user.id);
 
-    const io = req.app.get('io');
-    io.emit(`ride:update:${ride._id}`, ride);
-    io.emit('ride:taken', ride._id);
+ const io = req.app.get("io");
+
+// Notify rider and driver watching this ride
+io.to(`ride:${ride._id}`).emit("ride:update", ride);
+
+// Remove this request from every driver's request list
+io.to("drivers").emit("ride:taken", {
+  rideId: ride._id,
+});
 
     if (ride.rider?.pushToken) {
       sendPushNotifications(
@@ -149,8 +165,13 @@ exports.cancelRide = async (req, res) => {
 
     await ride.save();
 
-    const io = req.app.get('io');
-    io.emit(`ride:update:${ride._id}`, ride);
+const io = req.app.get("io");
+
+io.to(`ride:${ride._id}`).emit("ride:update", ride);
+
+io.to("drivers").emit("ride:cancelled", {
+  rideId: ride._id,
+});
 
     res.json(ride);
   } catch (err) {
@@ -174,7 +195,7 @@ exports.startRide = async (req, res) => {
     await ride.save();
 
     const io = req.app.get('io');
-    io.emit(`ride:update:${ride._id}`, ride);
+    io.to(`ride:${ride._id}`).emit("ride:update", ride);
 
     res.json(ride);
   } catch (err) {
@@ -198,7 +219,7 @@ exports.completeRide = async (req, res) => {
     await ride.save();
 
     const io = req.app.get('io');
-    io.emit(`ride:update:${ride._id}`, ride);
+    io.to(`ride:${ride._id}`).emit("ride:update", ride);
 
     res.json(ride);
   } catch (err) {
@@ -260,7 +281,7 @@ exports.updateStatus = async (req, res) => {
     await ride.save();
 
     const io = req.app.get('io');
-    io.emit(`ride:update:${ride._id}`, ride);
+    io.to(`ride:${ride._id}`).emit("ride:update", ride);
 
     res.json(ride);
   } catch (err) {
