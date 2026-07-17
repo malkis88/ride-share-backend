@@ -133,9 +133,19 @@ exports.bookTrip = async (req, res) => {
       return res.status(400).json({ message: 'Not enough seats available' });
     }
 
-    trip.passengers.push({ rider: req.user.id, seatsBooked: seatsRequested, status: 'confirmed' });
-    trip.availableSeats -= seatsRequested;
-    await trip.save();
+   trip.passengers.push({
+  rider: req.user.id,
+  seatsBooked: seatsRequested,
+  status: "pending",
+});
+
+await trip.save();
+
+const io = req.app.get("io");
+
+io.to(`user:${trip.driver._id}`).emit("trip:booking:new", {
+  tripId: trip._id,
+});
 
     const rider = await User.findById(req.user.id);
 
@@ -151,6 +161,107 @@ exports.bookTrip = async (req, res) => {
     res.json(trip);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.acceptBooking = async (req, res) => {
+  try {
+    const { id, bookingId } = req.params;
+
+    const trip = await Trip.findOne({
+      _id: id,
+      driver: req.user.id,
+    });
+
+    if (!trip)
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+
+    const booking = trip.passengers.id(bookingId);
+
+    if (!booking)
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+
+    if (booking.status !== "pending")
+      return res.status(400).json({
+        message: "Booking already processed",
+      });
+
+    if (trip.availableSeats < booking.seatsBooked)
+      return res.status(400).json({
+        message: "No seats available",
+      });
+
+    booking.status = "confirmed";
+    booking.respondedAt = new Date();
+
+    trip.availableSeats -= booking.seatsBooked;
+
+    await trip.save();
+
+    const io = req.app.get("io");
+
+    io.to(`user:${booking.rider}`).emit(
+      "trip:booking:accepted",
+      {
+        tripId: trip._id,
+      }
+    );
+
+    res.json(trip);
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.rejectBooking = async (req, res) => {
+  try {
+
+    const { id, bookingId } = req.params;
+
+    const trip = await Trip.findOne({
+      _id: id,
+      driver: req.user.id,
+    });
+
+    if (!trip)
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+
+    const booking = trip.passengers.id(bookingId);
+
+    if (!booking)
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+
+    booking.status = "rejected";
+    booking.respondedAt = new Date();
+
+    await trip.save();
+
+    const io = req.app.get("io");
+
+    io.to(`user:${booking.rider}`).emit(
+      "trip:booking:rejected",
+      {
+        tripId: trip._id,
+      }
+    );
+
+    res.json(trip);
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
