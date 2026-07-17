@@ -5,6 +5,7 @@ const {
   createTrip,
   getAvailableTrips,
   getMyTrips,
+  getTripById,
   cancelTrip,
   bookTrip,
   getMyBookings,

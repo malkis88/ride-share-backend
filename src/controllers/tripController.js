@@ -92,17 +92,7 @@ exports.getMyTrips = async (req, res) => {
   }
 };
 
-exports.getTripById = async (req, res) => {
-  try {
-    const trip = await Trip.findById(req.params.id)
-      .populate('driver', 'firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor')
-      .populate('passengers.rider', 'firstName lastName profilePicture');
-    if (!trip) return res.status(404).json({ message: 'Trip not found' });
-    res.json(trip);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+
 
 exports.cancelTrip = async (req, res) => {
   try {
@@ -258,6 +248,32 @@ exports.rejectBooking = async (req, res) => {
 
     res.json(trip);
 
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.getTripById = async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id)
+      .populate(
+        "driver",
+        "firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor"
+      )
+      .populate(
+        "passengers.rider",
+        "firstName lastName profilePicture phone"
+      );
+
+    if (!trip) {
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+    }
+
+    res.json(trip);
   } catch (err) {
     res.status(500).json({
       message: err.message,
