@@ -1,10 +1,40 @@
 const mongoose = require('mongoose');
 
 const passengerSchema = new mongoose.Schema({
-  rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  seatsBooked: { type: Number, required: true },
-  status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed' },
-}, { timestamps: true });
+  rider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+
+  seatsBooked: {
+    type: Number,
+    required: true,
+  },
+
+  status: {
+    type: String,
+    enum: [
+      "pending",
+      "confirmed",
+      "rejected",
+      "cancelled",
+    ],
+    default: "pending",
+  },
+
+  requestedAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  respondedAt: {
+    type: Date,
+    default: null,
+  },
+}, {
+  timestamps: true,
+});
 
 const tripSchema = new mongoose.Schema({
   driver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
