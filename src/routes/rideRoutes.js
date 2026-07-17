@@ -12,6 +12,7 @@ const {
   startRide,
   completeRide,
   rateRide,
+   getFareConfig
 } = require("../controllers/rideController");
 
 router.get('/fare-config', auth, getFareConfig);
