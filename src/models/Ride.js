@@ -14,6 +14,15 @@ const rideSchema = new mongoose.Schema({
     lng: Number
   },
   distanceKm: { type: Number, default: null },
+  durationMin: {
+    type: Number,
+    default: null,
+},
+
+routePolyline: {
+    type: String,
+    default: null,
+},
   status: {
     type: String,
     enum: ['requested', 'accepted', 'in_progress', 'completed', 'cancelled'],
