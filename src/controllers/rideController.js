@@ -280,6 +280,22 @@ exports.getMyRides = async (req, res) => {
   }
 };
 
+exports.updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const ride = await Ride.findById(req.params.id);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    ride.status = status;
+    await ride.save();
+
+    res.json(ride);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAvailableRides = async (req, res) => {
   try {
     if (req.user.role !== 'driver') {
