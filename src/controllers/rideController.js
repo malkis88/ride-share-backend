@@ -5,6 +5,7 @@ const { sendPushNotifications } = require('../services/pushService');
 exports.requestRide = async (req, res) => {
   try {
     const { pickup, dropoff, fareEstimate } = req.body;
+
     const ride = await Ride.create({
       rider: req.user.id,
       pickup,
@@ -27,7 +28,11 @@ exports.requestRide = async (req, res) => {
         availableDrivers.map((d) => d.pushToken),
         'New ride request',
         `Pickup at ${pickup?.address || 'a nearby location'}.`,
-        { screen: 'home', type: 'ride_requested', rideId: ride._id.toString() }
+        {
+          screen: 'home',
+          type: 'ride_requested',
+          rideId: ride._id.toString(),
+        }
       );
     }
 
@@ -39,12 +44,20 @@ exports.requestRide = async (req, res) => {
 
 exports.acceptRide = async (req, res) => {
   try {
-    const ride = await Ride.findById(req.params.id).populate('rider', 'pushToken');
-    if (!ride) return res.status(404).json({ message: 'Ride not found' });
-    if (ride.status !== 'requested') return res.status(400).json({ message: 'Ride already taken' });
+    const ride = await Ride.findById(req.params.id).populate(
+      'rider',
+      'pushToken'
+    );
+
+    if (!ride)
+      return res.status(404).json({ message: 'Ride not found' });
+
+    if (ride.status !== 'requested')
+      return res.status(400).json({ message: 'Ride already taken' });
 
     ride.driver = req.user.id;
     ride.status = 'accepted';
+
     await ride.save();
 
     const driver = await User.findById(req.user.id);
@@ -58,7 +71,11 @@ exports.acceptRide = async (req, res) => {
         [ride.rider.pushToken],
         'Driver on the way!',
         `${driver.firstName} accepted your ride and is heading to pick you up.`,
-        { screen: 'home', type: 'ride_accepted', rideId: ride._id.toString() }
+        {
+          screen: 'home',
+          type: 'ride_accepted',
+          rideId: ride._id.toString(),
+        }
       );
     }
 
@@ -72,17 +89,30 @@ exports.getRideById = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id)
       .populate(
-        "rider",
-        "firstName lastName profilePicture phone"
+        'rider',
+        'firstName lastName profilePicture phone'
       )
       .populate(
-        "driver",
-        "firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor"
+        'driver',
+        'firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor'
       );
 
-    if (!ride) {
-      return res.status(404).json({
-        message: "Ride not found",
+    if (!ride)
+      return res.status(404).json({ message: 'Ride not found' });
+
+    const userId = req.user.id;
+
+    const isRider =
+      ride.rider &&
+      ride.rider._id.toString() === userId;
+
+    const isDriver =
+      ride.driver &&
+      ride.driver._id.toString() === userId;
+
+    if (!isRider && !isDriver) {
+      return res.status(403).json({
+        message: 'Not authorized to view this ride',
       });
     }
 
@@ -94,13 +124,27 @@ exports.getRideById = async (req, res) => {
   }
 };
 
-exports.updateStatus = async (req, res) => {
+exports.cancelRide = async (req, res) => {
   try {
-    const { status } = req.body;
     const ride = await Ride.findById(req.params.id);
-    if (!ride) return res.status(404).json({ message: 'Ride not found' });
 
-    ride.status = status;
+    if (!ride)
+      return res.status(404).json({
+        message: 'Ride not found',
+      });
+
+    if (ride.status === 'completed')
+      return res.status(400).json({
+        message: 'Completed rides cannot be cancelled',
+      });
+
+    ride.status = 'cancelled';
+
+    ride.cancelledBy =
+      req.user.role === 'driver'
+        ? 'driver'
+        : 'rider';
+
     await ride.save();
 
     const io = req.app.get('io');
@@ -108,41 +152,171 @@ exports.updateStatus = async (req, res) => {
 
     res.json(ride);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.startRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+
+    if (!ride)
+      return res.status(404).json({
+        message: 'Ride not found',
+      });
+
+    ride.status = 'in_progress';
+
+    await ride.save();
+
+    const io = req.app.get('io');
+    io.emit(`ride:update:${ride._id}`, ride);
+
+    res.json(ride);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.completeRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+
+    if (!ride)
+      return res.status(404).json({
+        message: 'Ride not found',
+      });
+
+    ride.status = 'completed';
+
+    await ride.save();
+
+    const io = req.app.get('io');
+    io.emit(`ride:update:${ride._id}`, ride);
+
+    res.json(ride);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.rateRide = async (req, res) => {
+  try {
+    const { rating } = req.body;
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        message: 'Rating must be between 1 and 5',
+      });
+    }
+
+    const ride = await Ride.findById(req.params.id);
+
+    if (!ride)
+      return res.status(404).json({
+        message: 'Ride not found',
+      });
+
+    if (req.user.role === 'rider') {
+      ride.driverRating = rating;
+    } else {
+      ride.riderRating = rating;
+    }
+
+    await ride.save();
+
+    res.json({
+      message: 'Rating submitted successfully',
+      ride,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const ride = await Ride.findById(req.params.id);
+
+    if (!ride)
+      return res.status(404).json({
+        message: 'Ride not found',
+      });
+
+    ride.status = status;
+
+    await ride.save();
+
+    const io = req.app.get('io');
+    io.emit(`ride:update:${ride._id}`, ride);
+
+    res.json(ride);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
 exports.getMyRides = async (req, res) => {
   try {
-    const filter = req.user.role === 'rider'
-      ? { rider: req.user.id }
-      : { driver: req.user.id };
+    const filter =
+      req.user.role === 'rider'
+        ? { rider: req.user.id }
+        : { driver: req.user.id };
 
     const rides = await Ride.find(filter)
       .sort({ createdAt: -1 })
       .limit(20)
-      .populate('rider', 'firstName lastName profilePicture')
-      .populate('driver', 'firstName lastName profilePicture vehicleType vehiclePlate vehicleColor');
+      .populate(
+        'rider',
+        'firstName lastName profilePicture phone'
+      )
+      .populate(
+        'driver',
+        'firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor'
+      );
 
     res.json(rides);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
 exports.getAvailableRides = async (req, res) => {
   try {
     if (req.user.role !== 'driver') {
-      return res.status(403).json({ message: 'Only drivers can view available rides' });
+      return res.status(403).json({
+        message: 'Only drivers can view available rides',
+      });
     }
 
-    const rides = await Ride.find({ status: 'requested' })
+    const rides = await Ride.find({
+      status: 'requested',
+    })
       .sort({ createdAt: -1 })
       .limit(20)
-      .populate('rider', 'firstName lastName profilePicture');
+      .populate(
+        'rider',
+        'firstName lastName profilePicture phone'
+      );
 
     res.json(rides);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
