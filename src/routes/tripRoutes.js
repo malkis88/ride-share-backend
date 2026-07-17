@@ -7,6 +7,9 @@ const {
   getMyTrips,
   getTripById,
   cancelTrip,
+  startTrip,
+  completeTrip,
+  updateDriverLocation,
   bookTrip,
   getMyBookings,
   acceptBooking,
@@ -19,6 +22,11 @@ router.get('/mine', auth, getMyTrips);
 router.get('/bookings/mine', auth, getMyBookings);
 router.get('/:id', auth, getTripById);
 router.put('/:id/cancel', auth, cancelTrip);
+router.put("/:id/start", auth, startTrip);
+
+router.put("/:id/complete", auth, completeTrip);
+
+router.put("/:id/location", auth, updateDriverLocation);
 router.post('/:id/book', auth, bookTrip);
 router.put(
   "/:id/bookings/:bookingId/accept",
