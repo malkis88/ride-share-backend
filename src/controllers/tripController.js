@@ -79,12 +79,26 @@ exports.getAvailableTrips = async (req, res) => {
   }
 };
 
+
+
 exports.getMyTrips = async (req, res) => {
   try {
     const trips = await Trip.find({ driver: req.user.id })
       .sort({ departureTime: -1 })
       .populate('passengers.rider', 'firstName lastName profilePicture');
     res.json(trips);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getTripById = async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id)
+      .populate('driver', 'firstName lastName profilePicture phone vehicleType vehiclePlate vehicleColor')
+      .populate('passengers.rider', 'firstName lastName profilePicture');
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+    res.json(trip);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

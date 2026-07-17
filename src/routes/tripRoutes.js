@@ -8,12 +8,14 @@ const {
   cancelTrip,
   bookTrip,
   getMyBookings,
+  getTripById,
 } = require('../controllers/tripController');
 
 router.post('/', auth, createTrip);
 router.get('/', auth, getAvailableTrips);
 router.get('/mine', auth, getMyTrips);
 router.get('/bookings/mine', auth, getMyBookings);
+router.get('/:id', auth, getTripById);
 router.put('/:id/cancel', auth, cancelTrip);
 router.post('/:id/book', auth, bookTrip);
 
