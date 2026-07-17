@@ -12,10 +12,10 @@ const {
   startRide,
   completeRide,
   rateRide,
-  getFareConfig
+  
 } = require("../controllers/rideController");
 
-router.get('/fare-config', auth, getFareConfig);
+
 router.get("/:id", auth, getRideById);
 
 router.put("/:id/cancel", auth, cancelRide);
