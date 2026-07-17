@@ -109,6 +109,141 @@ exports.cancelTrip = async (req, res) => {
   }
 };
 
+exports.startTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findOne({
+      _id: req.params.id,
+      driver: req.user.id,
+    });
+
+    if (!trip) {
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+    }
+
+    if (trip.status !== "scheduled") {
+      return res.status(400).json({
+        message: "Trip cannot be started",
+      });
+    }
+
+    trip.status = "ongoing";
+    trip.startedAt = new Date();
+
+    await trip.save();
+
+    const io = req.app.get("io");
+
+    io.to(`trip:${trip._id}`).emit("trip:update", trip);
+
+    res.json(trip);
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.completeTrip = async (req, res) => {
+  try {
+
+    const trip = await Trip.findOne({
+      _id: req.params.id,
+      driver: req.user.id,
+    });
+
+    if (!trip) {
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+    }
+
+    trip.status = "completed";
+    trip.completedAt = new Date();
+
+    await trip.save();
+
+    const io = req.app.get("io");
+
+    io.to(`trip:${trip._id}`).emit("trip:update", trip);
+
+    io.to(`trip:${trip._id}`).emit("trip:completed", {
+      tripId: trip._id,
+    });
+
+    res.json(trip);
+
+  } catch (err) {
+
+    res.status(500).json({
+      message: err.message,
+    });
+
+  }
+};
+
+exports.updateDriverLocation = async (req, res) => {
+
+  try {
+
+    const {
+      latitude,
+      longitude,
+      heading,
+      speed,
+    } = req.body;
+
+    const trip = await Trip.findOne({
+      _id: req.params.id,
+      driver: req.user.id,
+    });
+
+    if (!trip) {
+      return res.status(404).json({
+        message: "Trip not found",
+      });
+    }
+
+    trip.driverLocation = {
+      latitude,
+      longitude,
+      heading,
+      speed,
+      updatedAt: new Date(),
+    };
+
+    await trip.save();
+
+    const io = req.app.get("io");
+
+    io.to(`trip:${trip._id}`).emit(
+      "driver:tripLocation",
+      {
+        tripId: trip._id,
+        latitude,
+        longitude,
+        heading,
+        speed,
+      }
+    );
+
+    res.json({
+      success: true,
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      message: err.message,
+    });
+
+  }
+
+};
+
+
 exports.bookTrip = async (req, res) => {
   try {
     const { sendPushNotifications } = require('../services/pushService');

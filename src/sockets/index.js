@@ -43,6 +43,45 @@ module.exports = function initSockets(io) {
       socket.leave(`ride:${rideId}`);
     });
 
+// ============================
+// JOIN TRIP ROOM
+// ============================
+
+socket.on("joinTrip", ({ tripId }) => {
+
+    if (!tripId) return;
+
+    socket.join(`trip:${tripId}`);
+
+    console.log(`${socket.userId} joined trip ${tripId}`);
+
+});
+
+// ============================
+// LEAVE TRIP ROOM
+// ============================
+
+socket.on("leaveTrip", ({ tripId }) => {
+
+    socket.leave(`trip:${tripId}`);
+
+});
+
+// ============================
+// DRIVER LIVE TRIP LOCATION
+// ============================
+
+socket.on("driver:tripLocation", (data) => {
+
+    if (!data?.tripId) return;
+
+    io.to(`trip:${data.tripId}`).emit(
+        "driver:tripLocation",
+        data
+    );
+
+});
+
     // ============================
     // DRIVER LIVE LOCATION
     // ============================

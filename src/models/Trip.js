@@ -12,6 +12,7 @@ const passengerSchema = new mongoose.Schema({
     required: true,
   },
 
+
   status: {
     type: String,
     enum: [
@@ -66,6 +67,18 @@ const tripSchema = new mongoose.Schema({
     enum: ['scheduled', 'ongoing', 'completed', 'cancelled'],
     default: 'scheduled',
   },
+
+  startedAt: Date,
+
+completedAt: Date,
+
+driverLocation: {
+    latitude: Number,
+    longitude: Number,
+    heading: Number,
+    speed: Number,
+    updatedAt: Date,
+},
   passengers: [passengerSchema],
 }, { timestamps: true });
 
