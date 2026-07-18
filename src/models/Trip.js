@@ -61,6 +61,7 @@ const tripSchema = new mongoose.Schema({
   vehicleType: String,
   vehiclePlate: String,
   vehicleColor: String,
+  isDeleted: { type: Boolean, default: false },
 
   status: {
     type: String,

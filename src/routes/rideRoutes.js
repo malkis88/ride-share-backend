@@ -12,6 +12,7 @@ const {
   startRide,
   completeRide,
   rateRide,
+  rejectRide
   
 } = require("../controllers/rideController");
 
@@ -25,6 +26,7 @@ router.put("/:id/start", auth, startRide);
 router.put("/:id/complete", auth, completeRide);
 
 router.put("/:id/rate", auth, rateRide);
+router.put('/:id/reject', auth, rejectRide);
 
 router.post('/', auth, requestRide);
 router.get('/mine', auth, getMyRides);

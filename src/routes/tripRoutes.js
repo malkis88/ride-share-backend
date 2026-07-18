@@ -14,6 +14,7 @@ const {
   getMyBookings,
   acceptBooking,
   rejectBooking,
+   deleteTrip
 } = require("../controllers/tripController");
 
 router.post('/', auth, createTrip);
@@ -25,7 +26,7 @@ router.put('/:id/cancel', auth, cancelTrip);
 router.put("/:id/start", auth, startTrip);
 
 router.put("/:id/complete", auth, completeTrip);
-
+router.delete('/:id', auth, deleteTrip);
 router.put("/:id/location", auth, updateDriverLocation);
 router.post('/:id/book', auth, bookTrip);
 router.put(

@@ -74,15 +74,12 @@ exports.acceptRide = async (req, res) => {
 
     const driver = await User.findById(req.user.id);
 
- const io = req.app.get("io");
+// acceptRide — after ride.save()
+const io = req.app.get("io");
+io.to(`ride:${ride._id}`).emit("ride:updated", ride);
+io.to(`user:${ride.rider._id || ride.rider}`).emit("ride:accepted", ride);
+io.to("drivers").emit("ride:taken", { rideId: ride._id });
 
-// Notify rider and driver watching this ride
-io.to(`ride:${ride._id}`).emit("ride:update", ride);
-
-// Remove this request from every driver's request list
-io.to("drivers").emit("ride:taken", {
-  rideId: ride._id,
-});
 
     if (ride.rider?.pushToken) {
       sendPushNotifications(
@@ -98,6 +95,23 @@ io.to("drivers").emit("ride:taken", {
     }
 
     res.json(ride);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.rejectRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+    if (ride.status !== 'requested') {
+      return res.status(400).json({ message: 'Ride is no longer available' });
+    }
+    if (!ride.rejectedBy.includes(req.user.id)) {
+      ride.rejectedBy.push(req.user.id);
+      await ride.save();
+    }
+    res.json({ message: 'Ride hidden from your requests' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -165,13 +179,13 @@ exports.cancelRide = async (req, res) => {
 
     await ride.save();
 
+// cancelRide — after ride.save()
 const io = req.app.get("io");
+io.to(`ride:${ride._id}`).emit("ride:updated", ride);
+io.to(`user:${ride.rider}`).emit("ride:cancelled", ride);
+if (ride.driver) io.to(`user:${ride.driver}`).emit("ride:cancelled", ride);
+io.to("drivers").emit("ride:cancelled", { rideId: ride._id });
 
-io.to(`ride:${ride._id}`).emit("ride:update", ride);
-
-io.to("drivers").emit("ride:cancelled", {
-  rideId: ride._id,
-});
 
     res.json(ride);
   } catch (err) {
@@ -194,8 +208,10 @@ exports.startRide = async (req, res) => {
 
     await ride.save();
 
-    const io = req.app.get('io');
-    io.to(`ride:${ride._id}`).emit("ride:update", ride);
+// startRide — after ride.save()
+const io = req.app.get('io');
+io.to(`ride:${ride._id}`).emit("ride:updated", ride);
+io.to(`user:${ride.rider}`).emit("ride:updated", ride);
 
     res.json(ride);
   } catch (err) {
@@ -218,8 +234,11 @@ exports.completeRide = async (req, res) => {
 
     await ride.save();
 
-    const io = req.app.get('io');
-    io.to(`ride:${ride._id}`).emit("ride:update", ride);
+  // completeRide — after ride.save()
+const io = req.app.get('io');
+io.to(`ride:${ride._id}`).emit("ride:updated", ride);
+io.to(`user:${ride.rider}`).emit("ride:completed", ride);
+if (ride.driver) io.to(`user:${ride.driver}`).emit("ride:completed", ride);
 
     res.json(ride);
   } catch (err) {
@@ -326,15 +345,13 @@ exports.getAvailableRides = async (req, res) => {
       });
     }
 
-    const rides = await Ride.find({
-      status: 'requested',
-    })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .populate(
-        'rider',
-        'firstName lastName profilePicture phone'
-      );
+  const rides = await Ride.find({
+  status: 'requested',
+  rejectedBy: { $ne: req.user.id },
+})
+  .sort({ createdAt: -1 })
+  .limit(20)
+  .populate('rider', 'firstName lastName profilePicture phone');
 
     res.json(rides);
   } catch (err) {

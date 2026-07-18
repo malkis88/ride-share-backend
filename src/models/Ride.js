@@ -29,6 +29,7 @@ routePolyline: {
     default: 'requested'
   },
   cancelledBy: { type: String, enum: ['rider', 'driver', null], default: null },
+  rejectedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   fareEstimate: { type: Number, default: 0 },
   driverRating: { type: Number, min: 1, max: 5, default: null },
   riderRating: { type: Number, min: 1, max: 5, default: null },

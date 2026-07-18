@@ -56,6 +56,9 @@ exports.createTrip = async (req, res) => {
       vehicleColor: driver.vehicleColor,
     });
 
+    const io = req.app.get('io');
+io.emit("trip:created", trip);
+
     res.status(201).json(trip);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -83,9 +86,9 @@ exports.getAvailableTrips = async (req, res) => {
 
 exports.getMyTrips = async (req, res) => {
   try {
-    const trips = await Trip.find({ driver: req.user.id })
-      .sort({ departureTime: -1 })
-      .populate('passengers.rider', 'firstName lastName profilePicture');
+const trips = await Trip.find({ driver: req.user.id, isDeleted: { $ne: true } })
+  .sort({ departureTime: -1 })
+  .populate('passengers.rider', 'firstName lastName profilePicture');
     res.json(trips);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -103,6 +106,11 @@ exports.cancelTrip = async (req, res) => {
     }
     trip.status = 'cancelled';
     await trip.save();
+
+    // cancelTrip — after trip.save()
+const io = req.app.get('io');
+io.emit("trip:cancelled", trip);
+io.to(`trip:${trip._id}`).emit("trip:updated", trip);
     res.json(trip);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -135,7 +143,9 @@ exports.startTrip = async (req, res) => {
 
     const io = req.app.get("io");
 
-    io.to(`trip:${trip._id}`).emit("trip:update", trip);
+    // startTrip — replace the emit line
+io.to(`trip:${trip._id}`).emit("trip:updated", trip);
+io.to(`user:${trip.driver}`).emit("trip:updated", trip);
 
     res.json(trip);
 
@@ -167,11 +177,10 @@ exports.completeTrip = async (req, res) => {
 
     const io = req.app.get("io");
 
-    io.to(`trip:${trip._id}`).emit("trip:update", trip);
-
-    io.to(`trip:${trip._id}`).emit("trip:completed", {
-      tripId: trip._id,
-    });
+// completeTrip — replace the emit lines
+io.to(`trip:${trip._id}`).emit("trip:updated", trip);
+io.to(`user:${trip.driver}`).emit("trip:updated", trip);
+    
 
     res.json(trip);
 
@@ -268,9 +277,10 @@ await trip.save();
 
 const io = req.app.get("io");
 
-io.to(`user:${trip.driver._id}`).emit("trip:booking:new", {
-  tripId: trip._id,
-});
+// bookTrip — rename the event
+io.to(`user:${trip.driver._id}`).emit("trip:updated", trip);
+io.to(`user:${trip.driver._id}`).emit("trip:booking:requested", { tripId: trip._id });
+
 
     const rider = await User.findById(req.user.id);
 
@@ -327,14 +337,12 @@ exports.acceptBooking = async (req, res) => {
 
     await trip.save();
 
-    const io = req.app.get("io");
-
-    io.to(`user:${booking.rider}`).emit(
-      "trip:booking:accepted",
-      {
-        tripId: trip._id,
-      }
-    );
+   // acceptBooking — after trip.save()
+const io = req.app.get("io");
+io.to(`user:${booking.rider}`).emit("trip:booking:accepted", { tripId: trip._id });
+io.to(`user:${booking.rider}`).emit("trip:updated", trip);
+io.to(`user:${trip.driver}`).emit("trip:updated", trip);
+io.to(`trip:${trip._id}`).emit("trip:updated", trip);
 
     res.json(trip);
 
@@ -372,14 +380,12 @@ exports.rejectBooking = async (req, res) => {
 
     await trip.save();
 
-    const io = req.app.get("io");
-
-    io.to(`user:${booking.rider}`).emit(
-      "trip:booking:rejected",
-      {
-        tripId: trip._id,
-      }
-    );
+ // rejectBooking — after trip.save()
+const io = req.app.get("io");
+io.to(`user:${booking.rider}`).emit("trip:booking:rejected", { tripId: trip._id });
+io.to(`user:${booking.rider}`).emit("trip:updated", trip);
+io.to(`user:${trip.driver}`).emit("trip:updated", trip);
+io.to(`trip:${trip._id}`).emit("trip:updated", trip);
 
     res.json(trip);
 
@@ -413,6 +419,21 @@ exports.getTripById = async (req, res) => {
     res.status(500).json({
       message: err.message,
     });
+  }
+};
+
+exports.deleteTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findOne({ _id: req.params.id, driver: req.user.id });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+    if (!['cancelled', 'completed'].includes(trip.status)) {
+      return res.status(400).json({ message: 'Only cancelled or completed trips can be removed' });
+    }
+    trip.isDeleted = true;
+    await trip.save();
+    res.json({ message: 'Trip removed' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
