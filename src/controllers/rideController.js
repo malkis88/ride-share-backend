@@ -300,7 +300,7 @@ exports.updateStatus = async (req, res) => {
     await ride.save();
 
     const io = req.app.get('io');
-    io.to(`ride:${ride._id}`).emit("ride:update", ride);
+    io.to(`ride:${ride._id}`).emit("ride:updated", ride);
 
     res.json(ride);
   } catch (err) {
