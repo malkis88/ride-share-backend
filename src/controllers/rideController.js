@@ -74,7 +74,6 @@ exports.acceptRide = async (req, res) => {
 
     const driver = await User.findById(req.user.id);
 
-// acceptRide — after ride.save()
 const io = req.app.get("io");
 io.to(`ride:${ride._id}`).emit("ride:updated", ride);
 io.to(`user:${ride.rider._id || ride.rider}`).emit("ride:accepted", ride);
@@ -142,7 +141,13 @@ exports.getRideById = async (req, res) => {
       ride.driver &&
       ride.driver._id.toString() === userId;
 
-    if (!isRider && !isDriver) {
+    // A ride still in "requested" status has no driver assigned yet — any
+    // driver should be able to preview it before deciding whether to
+    // accept, so this allows read access specifically for that case.
+    const isPreviewableByAnyDriver =
+      req.user.role === 'driver' && ride.status === 'requested';
+
+    if (!isRider && !isDriver && !isPreviewableByAnyDriver) {
       return res.status(403).json({
         message: 'Not authorized to view this ride',
       });
@@ -179,7 +184,6 @@ exports.cancelRide = async (req, res) => {
 
     await ride.save();
 
-// cancelRide — after ride.save()
 const io = req.app.get("io");
 io.to(`ride:${ride._id}`).emit("ride:updated", ride);
 io.to(`user:${ride.rider}`).emit("ride:cancelled", ride);
@@ -208,7 +212,6 @@ exports.startRide = async (req, res) => {
 
     await ride.save();
 
-// startRide — after ride.save()
 const io = req.app.get('io');
 io.to(`ride:${ride._id}`).emit("ride:updated", ride);
 io.to(`user:${ride.rider}`).emit("ride:updated", ride);
@@ -234,7 +237,6 @@ exports.completeRide = async (req, res) => {
 
     await ride.save();
 
-  // completeRide — after ride.save()
 const io = req.app.get('io');
 io.to(`ride:${ride._id}`).emit("ride:updated", ride);
 io.to(`user:${ride.rider}`).emit("ride:completed", ride);
